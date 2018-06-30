@@ -7,7 +7,7 @@
 * 安装goproxy
 * `curl -L https://raw.githubusercontent.com/snail007/goproxy/master/install_auto.sh | bash `
 * 生成证书(执行后会在当前目录生成proxy.crt和proxy.key下载这两个文件到本地)
-* `proxy keygen proxy keygen -C proxy`
+* `proxy keygen -C proxy`
 * 启动科学上网服务(38080为服务器端口可自定义需要开放此端口防火墙)
 * `proxy http -t tls -p ":38080" -C proxy.crt -K proxy.key --daemon --forever`
 ### 客户端
