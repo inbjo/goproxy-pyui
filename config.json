@@ -1,1 +1,1 @@
-{"server_ip": "8.8.8.8", "server_port": "38080", "local_port": "1080", "ssl": "True", "log": "True"}
+{"server_ip": "8.8.8.8", "server_port": "38080", "local_port": "1080", "ssl": "True", "log": "True", "autorun": "False", "proxy": "False"}
