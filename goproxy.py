@@ -75,7 +75,7 @@ class Window(QDialog):
         self.is_run()
 
         # 设置窗口标题
-        self.setWindowTitle('GoProxy PyUI')
+        self.setWindowTitle('GoProxy')
         # 设置窗口图标
         self.setWindowIcon(QIcon('icon.png'))
         # 显示窗口
