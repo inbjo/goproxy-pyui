@@ -1,80 +1,10 @@
+from conf import Conf
+from util import Util
 import sys
 import os
-import json
-import win32com.client
-import win32api
-import win32con
-import webbrowser
 from PyQt5.QtWidgets import (QPushButton, QGridLayout, QLabel, QLineEdit, QApplication,
                              QMessageBox, QGroupBox, QFormLayout, QCheckBox, QDialog)
 from PyQt5.QtGui import QIcon
-
-
-class Util():
-    # 初始化方法
-    def __init__(self):
-        super().__init__()
-        self.config = self.getConfig()
-
-    # 获取配置文件
-    def getConfig(self):
-        if self.hasConfig():
-            return self.readConfig()
-        else:
-            return {}
-
-    # 判断配置文件是否存在
-    @staticmethod
-    def hasConfig():
-        return os.path.exists('config.json')
-
-    # 读取配置文件
-    @staticmethod
-    def readConfig():
-        with open('config.json', 'r') as f:
-            return json.load(f)
-
-    # 写配置文件
-    @staticmethod
-    def saveConfig(data):
-        with open('config.json', 'w') as f:
-            json.dump(data, f)
-
-    # 检查某程序是否运行
-    @staticmethod
-    def check_exsit(process_name):
-        WMI = win32com.client.GetObject('winmgmts:')
-        processCodeCov = WMI.ExecQuery('select * from Win32_Process where Name="%s"' % process_name)
-        if len(processCodeCov) > 0:
-            return 1
-        else:
-            return 0
-
-    # 设置开机启动
-    @staticmethod
-    def set_autorun(path):
-        name = 'GoProxy'  # 要添加的项值名称
-        KeyName = 'Software\\Microsoft\\Windows\\CurrentVersion\\Run'
-        try:
-            key = win32api.RegOpenKey(win32con.HKEY_CURRENT_USER, KeyName, 0, win32con.KEY_ALL_ACCESS)
-            win32api.RegSetValueEx(key, name, 0, win32con.REG_SZ, path)
-            win32api.RegCloseKey(key)
-        except:
-            return False
-        else:
-            return True
-
-    @staticmethod
-    def del_autorun():
-        os.system('reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v GoProxy /f')
-        return True
-
-    @staticmethod
-    def check_autorun():
-        key = win32api.RegOpenKey(win32con.HKEY_CURRENT_USER, 'Software\\Microsoft\\Windows\\CurrentVersion\\Run', 0,
-                                  win32con.KEY_ALL_ACCESS)
-        print(win32api.RegQueryValueEx(key, 'GoProxy'))
-        win32api.RegCloseKey(key)
 
 
 class Window(QDialog):
@@ -119,7 +49,7 @@ class Window(QDialog):
         layout.addRow(btn_help, self.btn_action)
 
         # 获取配置信息
-        conf = Util().config
+        conf = Conf().conf
 
         # 如果有配置文件则赋值
         if conf != {}:
@@ -153,11 +83,11 @@ class Window(QDialog):
 
     # 启动代理
     def start_proxy(self):
-        status=Util().check_exsit(process_name='proxy-wingui.exe')
-        if status == 1:
+        status = Util().check_exsit('proxy-wingui.exe')
+        if status:
             os.system('taskkill /F /IM proxy-wingui.exe')
-            status = Util().check_exsit(process_name='proxy-wingui.exe')
-            if status == 1:
+            status = Util().check_exsit('proxy-wingui.exe')
+            if status:
                 QMessageBox.information(self, "提示", self.tr("关闭代理失败"))
             else:
                 self.btn_action.setText('启动代理')
@@ -171,7 +101,7 @@ class Window(QDialog):
                 shell = shell + ' --log proxy.log'
             os.system(shell)
             status = Util().check_exsit(process_name='proxy-wingui.exe')
-            if status == 1:
+            if status:
                 self.btn_action.setText('关闭代理')
                 QMessageBox.information(self, "报告老大", self.tr("代理已开启"))
             else:
@@ -179,7 +109,7 @@ class Window(QDialog):
 
     # 使用说明
     def show_help(self):
-        webbrowser.open_new('https://github.com/CorePlusPlus/goproxy-pyui')
+        Util.show_help()
 
     # 保存配置
     def save_config(self):
@@ -189,18 +119,16 @@ class Window(QDialog):
             "local_port": self.edit_local_port.text(),
             "ssl": str(self.cb_ssl.isChecked()),
             "log": str(self.cb_log.isChecked()),
-            "autorun":str(self.cb_autorun.isChecked()),
-            "proxy":str(self.cb_proxy.isChecked())
+            "autorun": str(self.cb_autorun.isChecked()),
+            "proxy": str(self.cb_proxy.isChecked())
         }
-        conf = Util()
-        conf.saveConfig(config)
+        Conf().save_config(config)
 
     # 开机启动
     def autorun(self):
         if self.cb_autorun.isChecked():
-            path=os.getcwd()+'\goproxy.exe Silent'
-            print(path)
-            result=Util.set_autorun(path)
+            path = os.getcwd() + '\goproxy.exe Silent'
+            result = Util.set_autorun(path)
             if result == True:
                 QMessageBox.information(self, "提示", self.tr("添加到开机启动成功"))
             else:
@@ -210,8 +138,8 @@ class Window(QDialog):
 
     # 判断goproxy是否已经后台运行
     def is_run(self):
-        status=Util().check_exsit(process_name='proxy-wingui.exe')
-        if status == 1:
+        status = Util().check_exsit('proxy-wingui.exe')
+        if status:
             self.btn_action.setText('关闭代理')
         else:
             self.btn_action.setText('启动代理')
@@ -221,14 +149,20 @@ class Window(QDialog):
     def sys_proxy(self):
         if self.cb_proxy.isChecked():
             port = self.edit_local_port.text()
-            os.system('reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings" /v ProxyEnable /t REG_DWORD /d 1 /f')
-            os.system('reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings" /v ProxyServer /d "http=127.0.0.1:'+port+';https=127.0.0.1:'+port+'" /f')
-            os.system('reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings" /v ProxyOverride /t REG_SZ /d "<-loopback>" /f')
+            os.system(
+                'reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings" /v ProxyEnable /t REG_DWORD /d 1 /f')
+            os.system(
+                'reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings" /v ProxyServer /d "http=127.0.0.1:' + port + ';https=127.0.0.1:' + port + '" /f')
+            os.system(
+                'reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings" /v ProxyOverride /t REG_SZ /d "<-loopback>" /f')
             QMessageBox.information(self, "提示", self.tr("已启用系统代理"))
         else:
-            os.system('reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings" /v ProxyEnable /t REG_DWORD /d 0 /f')
-            os.system('reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings" /v ProxyServer /d "" /f')
-            os.system('reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings" /v ProxyOverride /f')
+            os.system(
+                'reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings" /v ProxyEnable /t REG_DWORD /d 0 /f')
+            os.system(
+                'reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings" /v ProxyServer /d "" /f')
+            os.system(
+                'reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings" /v ProxyOverride /f')
             QMessageBox.information(self, "提示", self.tr("已关闭系统代理"))
         self.save_config()
 
@@ -236,6 +170,8 @@ class Window(QDialog):
 # 程序运行入口
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-
-    ex = Window()
-    sys.exit(app.exec_())
+    if len(sys.argv) >= 2:
+        Util().silent_run(Conf().conf)
+    else:
+        ex = Window()
+        sys.exit(app.exec_())
